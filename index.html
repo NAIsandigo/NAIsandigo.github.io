@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="description" content="github example">
+		<meta name="keywords" content="MovieTime, Movies, Movie, Director, Actors">
+		<meta name="author" content="Kyle Schreder">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+      <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.0/Chart.min.js"></script>
+      <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+      <title>MovieTime</title>
+   <!--
+		Author: Kyle Schreder
+				
+	-->
+   <style>
+      html{
+        position:relative; 
+        min-height: 100%;
+      }
+      html,body{
+        margin:0;
+        padding:0;
+      }
+      body {
+         background-image: url("pics/movieReel.jpg");
+         background-position: center center;
+         background-repeat: no-repeat;
+         background-attachment: fixed;
+         background-size: cover;
+         font-size:150%;
+         font-family:Lucida Sans Unicode;
+      }
+      .panel-default {
+         padding: 1%;
+      }      
+      td, th {
+         text-align: center;
+         font-size:medium;
+      }
+      .buttons {
+         margin-left:.5em;
+         padding:0;
+      }
+      .glyphicon {
+         width: 2em;
+      }
+      .search{
+         text-align:center;
+      }
+      .highlighted {
+         background-color: yellow;
+      }
+      #centerText {
+         text-align:center;
+      }
+      #footer {
+         background: rgba(171, 168, 166, 0.71);;
+         width:100%;
+         height:40px;
+         position:absolute;
+         bottom:0;
+         left:0;
+      }
+   </style>
+	</head>
+	<body>
+      <div class="container-fluid"  style="margin-bottom:40px;">
+         <div class="jumbotron">
+            <h1 class='text-center'><strong>MovieTime</strong></h1>
+         </div>
+         <div class="col-sm-10 col-sm-offset-1">
+            <div class="panel panel-default">
+               <ul class="nav nav-tabs">
+                  <li class="active"><a data-toggle="tab" href="#home">Home</a></li>
+                  <li><a data-toggle="tab" href="#menu1">Country</a></li>
+                  <li><a data-toggle="tab" href="#menu2">Sorted List</a></li>
+                  <li><a data-toggle="tab" href="#menu3">Actors</a></li>
+               </ul>
+               <div class="tab-content" data-ng-app="myApp" data-ng-controller="myCtrl">
+                  <div id="home" class="tab-pane fade in active">
+                     <div class="container-fluid">
+                        <div class="col-sm-8 col-sm-offset-2">
+                           <h2 class="page-header text-center">Welcome</h2>
+                           <p style="text-indent: 1em;" class="text-center">
+                              The following data was obtained from www.thegaurdian.com and is considered to be
+                              a list of the best films of all time. There are only 25 entries for each genre
+                              so every movie has earned its spot. You can see multiple variations of the data,
+                              such as which country has had the most Academy Award winning movies as well as
+                              seeing an accumulated total of how many movies had multiple leading actors. There
+                              is also a page where you can view the entire list and sort the data by any column
+                              you choose. Feel free to use our search feature to see if your favorite movie made
+                              the list.
+                           </p>
+                        </div>
+                     </div>
+                  </div>
+                  <div id="menu1" class="tab-pane fade">
+                     <h3 class="text-center">Movies Produced By Country</h3>
+                     <div class="chart-container" style="position: relative; width:100%">
+                         <canvas id="barChart"></canvas>
+                     </div>
+                  </div>
+                  <div id="menu2" class="tab-pane fade">
+                     <h3 class="text-center">Entire Seachable Table</h3>
+                     <div class="form-group col-sm-8 col-sm-offset-2">
+                        <input type="text" class="form-control search" placeholder="Search Any Text Field" data-ng-model="searchTerm" />
+                     </div>
+                     <br/>
+                     <div class='table-responsive' style="clear:both;">
+                        <table class="table table-striped table-bordered table-condensed" id='myTable'>
+                           <tHead>
+                              <tr>
+                                 <th data-ng-repeat="x in tableHeaders">
+                                    {{x}}<button type='button' class="buttons" name="{{x}}" data-ng-click="setSortValue($event)" data-sorted="false"><span class="glyphicon glyphicon-sort"></span></button>
+                                 </th>
+                              </tr>
+                           </tHead>
+                           <tBody>
+                              <tr data-ng-repeat="x in movieList | orderBy: sortBy | filter: searchTerm">
+                                 <td data-ng-repeat="y in tableHeaders">{{tableRepeat(x,y)}}</td>
+                              </tr>
+                           </tBody>
+                        </table>
+                     </div>
+                  </div>
+                  <div id="menu3" class="tab-pane fade">
+                     <h3 class="text-center">Leading Actors Per Movie</h3>
+                     <div class="chart-container" style="position: relative; width:100%">
+                         <canvas id="lineChart"></canvas>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <div class="text-center" id="footer">
+         <p><strong>MovieTime &#169; 2017</strong></p>
+      </div>
+      <script src="js/movieReel.js"></script>
+      
+      <script>
+         const countryList = ["USA", "UK", "Soviet Union", "Germany", "Sweden", "Japan", "France", "Korea", "New Zealand", "Spain", "Italy", "India", "Denmark", "Brazil", "Taiwan", "Hong Kong"];
+         let countryCount = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+         let totalLA = [0,0,0,0];
+         function getCounts(){
+            for(x in movieOriginal){
+               switch (movieOriginal[x].Country){
+                  case "USA":
+                     countryCount[0]+=1;
+                     break;
+                  case "UK":
+                     countryCount[1]++;
+                     break;
+                  case "Soviet Union":
+                     countryCount[2]++;
+                     break;
+                  case "Germany":
+                     countryCount[3]++;
+                     break;
+                  case "Sweden":
+                     countryCount[4]++;
+                     break;
+                  case "Japan":
+                     countryCount[5]++;
+                     break;
+                  case "France":
+                     countryCount[6]++;
+                     break;
+                  case "Korea":
+                     countryCount[7]++;
+                     break;
+                  case "New Zealand":
+                     countryCount[8]++;
+                     break;
+                  case "Spain":
+                     countryCount[9]++;
+                     break;
+                  case "Italy":
+                     countryCount[10]++;
+                     break;
+                  case "India":
+                     countryCount[11]++;
+                     break;
+                  case "Denmark":
+                     countryCount[12]++;
+                     break;
+                  case "Brazil":
+                     countryCount[13]++;
+                     break;
+                  case "Taiwan":
+                     countryCount[14]++;
+                     break;
+                  case "Hong Kong":
+                     countryCount[15]++;
+                     break;
+               }
+               if(movieOriginal[x]["Leading actors"].length < 3){
+                  totalLA[0] += 1;
+               }else if(movieOriginal[x]["Leading actors"].length == 3){
+                  totalLA[1] += 1;
+               }else if(movieOriginal[x]["Leading actors"].length == 4){
+                  totalLA[2] += 1;
+               }else if(movieOriginal[x]["Leading actors"].length >= 5){
+                  totalLA[3] += 1;
+               }
+            };
+         };
+         var app = angular.module('myApp', []);
+         app.controller('myCtrl', function($scope){
+            $scope.movieList = movieOriginal;
+            //Get Object Keys to set as table headers
+            $scope.tableHeaders = (Object.keys($scope.movieList[0]));
+            //Function to populate table
+            $scope.tableRepeat = function(x,y){
+               //Arrays must be formatted before they are displayed
+               if(Array.isArray(x[y])){
+                  return x[y].join(", ");
+               }else{
+                  return x[y];
+               }
+            }
+            $scope.setSortValue = function($event){
+               if($event.currentTarget.dataset.sorted == "false"){
+                  $scope.sortBy = '"' + $event.currentTarget.name + '"';
+                  $event.currentTarget.dataset.sorted = "true";
+               }
+               else{
+                  $scope.sortBy = '-"' + $event.currentTarget.name + '"';
+                  $event.currentTarget.dataset.sorted = "false";
+               }
+            }
+            $scope.setFilterValue = function($event){
+            
+            }
+            getCounts();
+            //Leading Actors Chart
+            $scope.canvasLine = document.querySelector('#lineChart');
+            $scope.lineChart = new Chart($scope.canvasLine, {
+               type: 'pie',
+               data: {
+                  labels: ["<2", "3", "4", ">5"],
+                  datasets: [
+                     {
+                        label: "Leading Actors per Movie",
+                        backgroundColor: ['#2232a3', '#a125f5', '#b142c2', '#215489', '#214121'],
+                        data: [totalLA[0], totalLA[1], totalLA[2], totalLA[3]]
+                     }
+                  ]
+               }
+            });
+            //Movies Produced by country graph
+            $scope.canvasBar = document.getElementById('barChart');
+            $scope.dataBar = {
+               labels: ["USA", "UK", "Soviet Union", "Germany", "Sweden", "Japan", "France", "Korea", "New Zealand", "Spain", "Italy", "India", "Denmark", "Brazil", "Taiwan", "Hong Kong"],
+               datasets: [
+                  {
+                     label: "Movies Produced:",
+                     backgroundColor: "rgba(255,99,132,0.2)",
+                     borderColor: "rgba(255,99,132,1)",
+                     borderWidth: 2,
+                     hoverBackgroundColor: "rgba(255,99,132,0.4)",
+                     hoberBordercolor: "rgba(255,99,132,1)",
+                     data: [countryCount[0], countryCount[1], countryCount[2], countryCount[3], 
+                            countryCount[4], countryCount[5], countryCount[6], countryCount[7], 
+                            countryCount[8], countryCount[9], countryCount[10], countryCount[11], 
+                            countryCount[12], countryCount[13], countryCount[14], countryCount[15]],
+                  }
+               ] 
+            };
+            $scope.myBarChart = Chart.Bar($scope.canvasBar,{data:$scope.dataBar});
+         });
+      </script>
+  </body>
+</html>
